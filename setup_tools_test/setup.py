@@ -10,4 +10,5 @@ setup(
 #    package_data={"": ["*.ini"]},
     install_requires=["pymssql"],
     setup_requires=["virtualenv"],
+    dependency_links=["https://github.com/heera-jaiswal/scripts/blob/master/setup_tools_test/dist/setup_tools_test-0.1-py2.7.egg"],
     packages = packages)
