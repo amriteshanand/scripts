@@ -1,0 +1,12 @@
+setup.py
+project/__init__.py
+project/project.ini
+project/project.py
+project/my_modules/__init__.py
+project/my_modules/config.ini
+project/my_modules/tool.py
+setup_tools_test.egg-info/PKG-INFO
+setup_tools_test.egg-info/SOURCES.txt
+setup_tools_test.egg-info/dependency_links.txt
+setup_tools_test.egg-info/requires.txt
+setup_tools_test.egg-info/top_level.txt
