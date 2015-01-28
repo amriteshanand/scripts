@@ -1,0 +1,6 @@
+IFS=","
+sites=testapi.mantistechnologies.com,affapi.mantistechnologies.com,agents.bookbustickets.com,agents.bookbustickets.com,capi.mantistechnologies.com,cleartripapi.mantistechnologies.com,ctcapi.mantistechnologies.com,hermesapi.mantistechnologies.com,iamgds,ibiboapi.mantistechnologies.com,mmtapi.mantistechnologies.com,ossapi.mantistechnologies.com,tgapi.mantistechnologies.com,tyws,viaapi.mantistechnologies.com
+for site in $sites
+do 
+"C:\Windows\System32\inetsrv\appcmd.exe" list config $site -section:system.webServer/security/ipSecurity > "$site.txt"
+done

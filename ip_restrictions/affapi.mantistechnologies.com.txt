@@ -1,0 +1,74 @@
+<system.webServer>
+  <security>
+    <ipSecurity allowUnlisted="true">
+      <add ipAddress="115.114.52.1" allowed="false" />
+      <add ipAddress="180.179.50.60" allowed="false" />
+      <add ipAddress="182.68.214.239" allowed="false" />
+      <add ipAddress="124.153.102.101" allowed="false" />
+      <add ipAddress="182.68.171.35" allowed="false" />
+      <add ipAddress="182.71.237.123" allowed="true" />
+      <add ipAddress="182.72.89.242" allowed="false" />
+      <add ipAddress="124.153.102.0" subnetMask="124.153.102.255" allowed="false" />
+      <add ipAddress="122.252.231.12" allowed="true" />
+      <add ipAddress="54.251.138.205" allowed="true" />
+      <add ipAddress="54.251.138.200" allowed="true" />
+      <add ipAddress="54.251.251.66" allowed="true" />
+      <add ipAddress="175.100.151.150" allowed="true" />
+      <add ipAddress="180.179.58.178" allowed="true" />
+      <add ipAddress="180.179.58.179" allowed="true" />
+      <add ipAddress="182.72.118.253" allowed="true" />
+      <add ipAddress="182.72.118.254" allowed="true" />
+      <add ipAddress="182.18.132.210" allowed="true" />
+      <add ipAddress="202.65.137.186" allowed="true" />
+      <add ipAddress="202.65.137.187" allowed="true" />
+      <add ipAddress="202.65.137.198" allowed="true" />
+      <add ipAddress="216.12.192.200" allowed="true" />
+      <add ipAddress="202.87.51.226" allowed="true" />
+      <add ipAddress="202.87.51.227" allowed="true" />
+      <add ipAddress="115.114.17.166" allowed="true" />
+      <add ipAddress="115.114.17.160" allowed="true" />
+      <add ipAddress="182.71.249.14" allowed="true" />
+      <add ipAddress="182.71.249.2" allowed="true" />
+      <add ipAddress="115.114.17.142" allowed="true" />
+      <add ipAddress="203.109.116.158" allowed="true" />
+      <add ipAddress="184.173.215.157" allowed="true" />
+      <add ipAddress="115.112.232.57" allowed="true" />
+      <add ipAddress="182.72.22.210" allowed="true" />
+      <add ipAddress="54.251.138.191" allowed="true" />
+      <add ipAddress="54.251.138.193" allowed="true" />
+      <add ipAddress="54.251.138.194" allowed="true" />
+      <add ipAddress="54.251.138.195" allowed="true" />
+      <add ipAddress="54.251.138.196" allowed="true" />
+      <add ipAddress="54.251.138.197" allowed="true" />
+      <add ipAddress="54.251.138.198" allowed="true" />
+      <add ipAddress="54.251.138.201" allowed="true" />
+      <add ipAddress="54.251.138.202" allowed="true" />
+      <add ipAddress="54.251.138.203" allowed="true" />
+      <add ipAddress="54.251.138.204" allowed="true" />
+      <add ipAddress="61.16.154.122" allowed="true" />
+      <add ipAddress="173.236.127.201" allowed="true" />
+      <add ipAddress="184.154.48.162" allowed="true" />
+      <add ipAddress="119.18.58.173" allowed="true" />
+      <add ipAddress="180.149.242.64" allowed="true" />
+      <add ipAddress="180.149.240.234" allowed="true" />
+      <add ipAddress="184.107.48.235" allowed="true" />
+      <add ipAddress="184.107.54.123" allowed="true" />
+      <add ipAddress="184.107.54.122" allowed="true" />
+      <add ipAddress="111.118.190.189" allowed="true" />
+      <add ipAddress="103.14.122.52" allowed="true" />
+      <add ipAddress="103.14.122.51" allowed="true" />
+      <add ipAddress="103.14.123.51" allowed="true" />
+      <add ipAddress="182.50.142.116" allowed="true" />
+      <add ipAddress="122.102.26.200" allowed="true" />
+      <add ipAddress="202.3.13.41" allowed="true" />
+      <add ipAddress="202.3.13.69" allowed="true" />
+      <add ipAddress="180.149.245.241" allowed="true" />
+      <add ipAddress="14.140.226.109" allowed="true" />
+      <add ipAddress="203.124.121.12" allowed="true" />
+      <add ipAddress="5.10.68.26" allowed="true" />
+      <add ipAddress="64.64.25.211" allowed="true" />
+      <add ipAddress="118.95.103.132" allowed="true" />
+      <add ipAddress="115.112.90.50" allowed="true" />
+    </ipSecurity>
+  </security>
+</system.webServer>

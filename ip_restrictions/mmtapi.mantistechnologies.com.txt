@@ -1,0 +1,16 @@
+<system.webServer>
+  <security>
+    <ipSecurity allowUnlisted="false">
+      <add ipAddress="115.114.52.1" allowed="true" />
+      <add ipAddress="122.252.231.12" allowed="true" />
+      <add ipAddress="124.153.66.44" allowed="true" />
+      <add ipAddress="115.111.170.28" allowed="true" />
+      <add ipAddress="125.20.38.65" allowed="true" />
+      <add ipAddress="124.153.66.43" allowed="true" />
+      <add ipAddress="115.114.52.2" allowed="true" />
+      <add ipAddress="202.54.232.135" allowed="true" />
+      <add ipAddress="216.12.192.200" allowed="true" />
+      <add ipAddress="182.73.7.9" allowed="true" />
+    </ipSecurity>
+  </security>
+</system.webServer>

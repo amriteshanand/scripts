@@ -1,0 +1,25 @@
+<system.webServer>
+  <security>
+    <ipSecurity allowUnlisted="false">
+      <add ipAddress="115.114.52.1" allowed="false" />
+      <add ipAddress="180.179.50.60" allowed="false" />
+      <add ipAddress="182.68.214.239" allowed="false" />
+      <add ipAddress="124.153.102.101" allowed="false" />
+      <add ipAddress="182.68.171.35" allowed="false" />
+      <add ipAddress="182.71.237.123" allowed="false" />
+      <add ipAddress="182.72.89.242" allowed="false" />
+      <add ipAddress="124.153.102.0" subnetMask="124.153.102.255" allowed="false" />
+      <add ipAddress="122.252.231.12" allowed="true" />
+      <add ipAddress="182.72.103.18" allowed="true" />
+      <add ipAddress="182.72.22.210" allowed="true" />
+      <add ipAddress="202.54.157.189" allowed="true" />
+      <add ipAddress="202.54.157.2" allowed="true" />
+      <add ipAddress="202.54.157.4" allowed="true" />
+      <add ipAddress="202.54.157.6" allowed="true" />
+      <add ipAddress="202.54.157.10" allowed="true" />
+      <add ipAddress="122.184.143.194" allowed="true" />
+      <add ipAddress="202.54.157.8" allowed="true" />
+      <add ipAddress="115.249.175.146" allowed="true" />
+    </ipSecurity>
+  </security>
+</system.webServer>
