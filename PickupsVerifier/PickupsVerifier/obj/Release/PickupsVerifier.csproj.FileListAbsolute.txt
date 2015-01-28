@@ -1,0 +1,16 @@
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\bin\Release\PickupsVerifier.exe.config
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\bin\Release\PickupsVerifier.exe
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\bin\Release\PickupsVerifier.XmlSerializers.dll
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\bin\Release\PickupsVerifier.pdb
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\obj\Release\ResolveAssemblyReference.cache
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\obj\Release\PickupsVerifier.exe
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\obj\Release\PickupsVerifier.pdb
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\obj\Release\PickupsVerifier.XmlSerializers.dll
+D:\repo\scripts\PickupsVerifier\PickupsVerifier\bin\Release\PickupsVerifier.exe.config
+D:\repo\scripts\PickupsVerifier\PickupsVerifier\obj\Release\PickupsVerifier.exe
+D:\repo\scripts\PickupsVerifier\PickupsVerifier\obj\Release\PickupsVerifier.pdb
+D:\repo\scripts\PickupsVerifier\PickupsVerifier\obj\Release\PickupsVerifier.XmlSerializers.dll
+D:\repo\scripts\PickupsVerifier\PickupsVerifier\bin\Release\PickupsVerifier.exe
+D:\repo\scripts\PickupsVerifier\PickupsVerifier\bin\Release\PickupsVerifier.XmlSerializers.dll
+D:\repo\scripts\PickupsVerifier\PickupsVerifier\bin\Release\PickupsVerifier.pdb
+D:\repo\scripts\PickupsVerifier\PickupsVerifier\obj\Release\ResolveAssemblyReference.cache

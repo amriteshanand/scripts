@@ -1,0 +1,6 @@
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\bin\Debug\PickupsVerifier.exe.config
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\bin\Debug\PickupsVerifier.exe
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\bin\Debug\PickupsVerifier.pdb
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\obj\Debug\PickupsVerifier.exe
+C:\Users\MY\Documents\Visual Studio 2008\Projects\PickupsVerifier\PickupsVerifier\obj\Debug\PickupsVerifier.pdb
