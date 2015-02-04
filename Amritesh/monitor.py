@@ -47,6 +47,8 @@ fields = [
 ,"Discount"
 ,"Commission"
 ,"Cancel_Charges"
+,"SRS_Fee"
+,"SRS_Agent_Comm"
 ,"Collection_Amount"
 ]
 def CreateSummary(rows):
