@@ -79,7 +79,7 @@ def check_db():
 	print "[%s]Checking DB..." % (datetime.now())
 	try:
 		try:
-			conn.execute_query("dbo.spSubAgent_GenerateVouchers_amritesh")
+			conn.execute_query("dbo.spSubAgent_GenerateVouchers")
 			rows = conn
 		except:
 			print "There was an error in query!"
