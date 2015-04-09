@@ -9,98 +9,38 @@ using System.Net.Mail;
 using System.Web;
 using System.Net;
 using System.Security.Cryptography;
+using System.Web.Script.Serialization;
+using System.IO;
+using System.Globalization;
+
 namespace PickupsVerifier
 {
     class Program
     {
+        
         static void Main(string[] args)
         {
-
+            /* Fetch pickups for today's bookings.*/
             fetch_rt_pickups_for_bookings();
-            clsDB db=null;
-            DataSet ds=null;
 
             /*Get mismatched pickups from gds*/
-            DataTable dt_result = null;            
-            db = new clsDB();
-            ds = db.ExecuteSelect("RMS_GET_MISMATCHED_PICKUP_BOOKINGS",CommandType.StoredProcedure,160);
-            Dictionary<int,bool> sms_sent_flags=new Dictionary<int,bool>();
+            clsDB db = new clsDB();
+            DataSet ds = db.ExecuteSelect("RMS_GET_MISMATCHED_PICKUP_BOOKINGS", CommandType.StoredProcedure, 160);
             if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
             {
-                int i = 0;
                 foreach (DataRow row in ds.Tables[0].Rows)
-                {                     
-                    int booking_id = Convert.ToInt32(row["booking_id"]);                                        
-                    string pnr=Convert.ToString(row["pnr"]);                                                            
-                    string mobile = Convert.ToString(row["mobile"]);
-                    mobile = "7204608909";
-                    try
-                    {
-                        if (Convert.ToInt32(row["pickup_removed"]) == 0)
-                        {
-                            DateTime dt_jd = Convert.ToDateTime(row["journey_date"]);
-
-                            // Check for mid night pickup changes
-                            DateTime new_pickup_time = Convert.ToDateTime(row["new_time"]);                                                        
-                            if ((dt_jd.TimeOfDay.Hours - new_pickup_time.Hour) > 18 || (new_pickup_time.Hour - dt_jd.TimeOfDay.Hours) > 18)
-                            {
-                                new_pickup_time = Convert.ToDateTime(row["journey_date"]).Date.AddDays(1).Add(new_pickup_time.TimeOfDay);
-                            }
-                            else {
-                                new_pickup_time = Convert.ToDateTime(row["journey_date"]).Date.Add(new_pickup_time.TimeOfDay);
-                            }
-
-                            // Check for mid night pickup changes
-                            DateTime old_pickup_time = Convert.ToDateTime(row["old_time"]);
-                            if ((dt_jd.TimeOfDay.Hours - old_pickup_time.Hour) > 18 || (old_pickup_time.Hour - dt_jd.TimeOfDay.Hours) > 18)
-                            {
-                                old_pickup_time = Convert.ToDateTime(row["journey_date"]).Date.AddDays(1).Add(old_pickup_time.TimeOfDay);
-                            }
-                            else {
-                                old_pickup_time = Convert.ToDateTime(row["journey_date"]).Date.Add(old_pickup_time.TimeOfDay);
-                            }                                                                                    
-                            
-                            row["new_time"] = new_pickup_time;
-                            row["old_time"] = old_pickup_time;
-                            int sms_status = 0;
-                            if (Convert.ToInt32(row["sms_sent"]) == 0)
-                            {
-                                //TODO:   
-                                db = new clsDB();
-                                db.AddParameter("BOOKING_ID", booking_id);
-                                db.AddParameter("PROVIDER_PNR_NO", pnr,200);
-
-                                DataSet ds_booking = db.ExecuteSelect("WS_GET_BOOKING_INFO_3", CommandType.StoredProcedure, 160);
-                                //sms_status = send_sms(booking_id, pnr, mobile, ds_booking);
-                            }
-                            else
-                            {
-                                sms_status = 1;
-                            }
-                            row["sms_sent"]=sms_status;                           
-
-                            update_booking(booking_id, new_pickup_time, sms_status); //Update pickup time in gds and sms_sent in booked_pickups                            
-                        }                        
-                    }
-                    catch (System.Exception ex) { 
-                    }
-                    i++;
+                {
+                    process(row);
                 }
-                if (ds.Tables[0].Rows.Count > 0) {
-                    string email_content = convert_to_html(ds.Tables[0]);
-                    /*Create mismatch pickups email content based on bookings and send to team*/            
-                    email_content = "<h1>Mismatching Pickup Bookings</h1></br>"+"Total="+ds.Tables[0].Rows.Count.ToString()+"<br/>" + email_content;
-                    string str_email_to = System.Configuration.ConfigurationSettings.AppSettings["TO_EMAILS"].ToString();
-                    send_email(str_email_to,"Pickup Mismatch Bookings",email_content);
+                if (ds.Tables[0].Rows.Count > 0)
+                {
+                    process_aggregation(ds.Tables[0]);
                 }
             }
-            
         }
-        
-        /// <summary>
-        /// Fetch real time pickups for each booking having journey in next few hours
-        /// </summary>
-        private static void fetch_rt_pickups_for_bookings() {
+
+        private static void fetch_rt_pickups_for_bookings()
+        {
             string auth_hash = ConfigurationSettings.AppSettings["AUTH_HASH"].ToString();
             string security = ConfigurationSettings.AppSettings["SECURITY"].ToString();
             int user_id = Convert.ToInt32(ConfigurationSettings.AppSettings["USER_ID"]);
@@ -123,7 +63,6 @@ namespace PickupsVerifier
                     int booking_id = Convert.ToInt32(dr["booking_id"]);
                     try
                     {
-                        //TODO:replace with real time pickup api
                         gds_api.clsPickups pickup_respnse = service.GetPickupsForJourneyDateRT(auth, route_schedule_id, journey_date, security);
                         gds_api.clsPickup[] pickup_list = pickup_respnse.Pickup;
                         bool found = false;
@@ -146,346 +85,376 @@ namespace PickupsVerifier
                     }
                     catch (System.Exception ex)
                     {
-
                     }
                 }
             }
         }
-        
-        /// <summary>
-        /// Update pickup time in gds bookings
-        /// </summary>
-        /// <param name="booking_id"></param>
-        /// <param name="pickup_time"></param>
-        /// <param name="sms_sent"></param>
-        public static void update_booking(int booking_id, DateTime pickup_time,int sms_sent)
+
+        private static void process(DataRow row)
+        {
+            int user_id = Convert.ToInt32(row["user_id"].ToString());
+            if(!(user_id==333 || user_id==4642))
+            {
+                return;
+            }
+            
+            try
+            {
+                if (Convert.ToInt32(row["pickup_removed"]) == 0)
+                {
+                    // Check for mid night pickup changes
+                    DateTime dt_jd = Convert.ToDateTime(row["journey_date"]);
+                    row["new_time"] = midnight_timecheck(Convert.ToDateTime(row["new_time"]), dt_jd);
+                    row["old_time"] = midnight_timecheck(Convert.ToDateTime(row["old_time"]), dt_jd);
+
+                    //Update pickup time in gds and sms_sent in booked_pickups
+                    update_booking(Convert.ToInt32(row["booking_id"].ToString()), Convert.ToDateTime(row["new_time"].ToString())); 
+
+                    int sms_status = 0;
+                    int email_status = 0;
+
+
+                    if (Convert.ToInt32(row["sms_sent"]) == 0)
+                    {
+                        sms_status = process_sms(row);
+                    }
+                    else
+                    {
+                        sms_status = 1;
+                    }
+
+                    if (Convert.ToInt32(row["email_sent"]) == 0)
+                    {
+                        email_status = process_email(row);
+                    }
+                    else
+                    {
+                        email_status = 1;
+                    }
+
+                    // Update sms and email status in BOOKED_PICKUP_UPDATES
+                    update_informed_status(Convert.ToInt32(row["booking_id"].ToString()), sms_status, email_status);
+                }
+            }
+            catch (System.Exception ex)
+            {
+            }
+        }
+
+        private static DateTime midnight_timecheck(DateTime time, DateTime dt_jd)
+        {
+            if ((dt_jd.TimeOfDay.Hours - time.Hour) > 18 || (time.Hour - dt_jd.TimeOfDay.Hours) > 18)
+            {
+                time = dt_jd.Date.AddDays(1).Add(time.TimeOfDay);
+            }
+            else
+            {
+                time = dt_jd.Date.Add(time.TimeOfDay);
+            }
+            return time;
+        }
+
+        public static void update_booking(int booking_id, DateTime pickup_time)
         {
             clsDB db = new clsDB();
             db.AddParameter("booking_id", booking_id);
             db.AddParameter("pickup_time", pickup_time);
-            db.AddParameter("sms_sent", sms_sent);
-            db.ExecuteSelect("RMS_UPDATE_BOOKING_PICKUP", CommandType.StoredProcedure, 160);
-
+            db.ExecuteDML("RMS_UPDATE_BOOKING_PICKUP_Amritesh", CommandType.StoredProcedure, 160);
         }
-        
-        /// <summary>
-        /// Create html from data table
-        /// </summary>
-        /// <param name="dt"></param>
-        /// <returns></returns>
-        public static string convert_to_html(DataTable dt) {
+
+        private static int process_sms(DataRow row)
+        {
+            int sms_status = 0;
+            int booking_id = Convert.ToInt32(row["booking_id"].ToString());
+            string pnr = row["pnr"].ToString();
+            string tno = row["ticket_no"].ToString();
+            string pickup = row["pickup"].ToString();
+            string mobile = Convert.ToString(row["mobile"]);
+            mobile = "7676036717"; // Amritesh Anand Mobile Number
+            Dictionary<string, string> content = new Dictionary<string, string>();
+            content["pnr"] = pnr;
+            string[] pickup_array = pickup.Split(new string[] { "</br>" }, StringSplitOptions.None);
+            content["pickup"] = pickup_array[0];
+            content["new_time"] = Convert.ToDateTime(row["new_time"]).ToString(@"hh:mmtt dd/MM/yyyy", CultureInfo.InvariantCulture);
+            string url = System.Configuration.ConfigurationSettings.AppSettings["DETAILS_URL"];
+            url = url.Replace("#PNR#",pnr);
+            url = url.Replace("#TNO#", tno);
+            content["url"] = create_tinyURL(url);
+            sms_status = send_sms(booking_id, pnr, mobile, content);
+            return sms_status;
+        }
+
+        private static int process_email(DataRow row)
+        {
+            int email_status = 0;
+            int booking_id = Convert.ToInt32(row["booking_id"].ToString());
+            string to_email_id = row["customer_email"].ToString();
+            to_email_id = "amritesh.anand@travelyaari.com"; // Amritesh Anand Mobile Number
+            string cc_email_id = System.Configuration.ConfigurationSettings.AppSettings["TO_EMAILS_OMS"];
+            string subject = "";
+            string pnr = row["pnr"].ToString();
+            string tno = row["ticket_no"].ToString();
+            clsDB db = new clsDB();
+            db.AddParameter("provider_pnr_no", pnr, 50);
+            db.AddParameter("sub_agent_ticket_no", tno, 20);
+            DataSet ds = db.ExecuteSelect("WS_GET_TICKET_INFO_TY", CommandType.StoredProcedure, 160);
+            Dictionary<string, object> contents = new Dictionary<string, object>();
+            Dictionary<string, object> attachments = new Dictionary<string, object>();
+            if (ds != null && ds.Tables.Count > 2 && ds.Tables[0].Rows.Count > 0)
+            {
+                foreach (DataRow details in ds.Tables[0].Rows)
+                {
+                    contents = details.Table.Columns.Cast<DataColumn>().ToDictionary(col => col.ColumnName, col => details.Field<object>(col.ColumnName));
+                    attachments = details.Table.Columns.Cast<DataColumn>().ToDictionary(col => col.ColumnName, col => details.Field<object>(col.ColumnName));
+                }
+                string pickup_place_style = @"class=""points-right"" style=""padding: 8px 0;vertical-align: middle;border-top: 1px dashed #d3bcb9;""";
+                string pickup_time_style = @"class=""points-left"" style=""font-weight: bold;vertical-align: middle;width: 80px;padding: 8px 0;border-top: 1px dashed #d3bcb9;""";
+                string passenger_style = @"class=""passenger-body"" style=""font-size: 13px;padding: 5px 0;border-bottom: 1px solid #E0DACF;""";
+                contents["PASSENGERS"] = convert_to_html2(ds.Tables[1], passenger_style, passenger_style);
+                contents["PICKUPS"] = convert_to_html2(ds.Tables[2], pickup_time_style,pickup_place_style);
+                attachments["PASSENGERS"] = convert_to_html2(ds.Tables[1], passenger_style, passenger_style);
+                attachments["PICKUPS"] = convert_to_html2(ds.Tables[2], pickup_time_style, pickup_place_style);
+            }
+            string etype = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_PMISMATCH_TYPE"];
+            string key = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_PMISMATCH_KEY"];
+            email_status = send_email(booking_id, to_email_id, cc_email_id, subject, contents, attachments, etype);
+            return email_status;
+        }
+
+        private static void process_aggregation(DataTable mismatch_table)
+        {
+            /*Create mismatch pickups email content based on bookings and send to team*/
+            Dictionary<int,string> email_list = new Dictionary<int,string>();
+            clsDB db = new clsDB();
+            DataSet ds = db.ExecuteSelect("WS_GET_AGENT_INFO_DETAILS", CommandType.StoredProcedure, 160);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                foreach(DataRow row in ds.Tables[0].Rows)
+                {
+                    try
+                    { 
+                        int user_id = Convert.ToInt32(row["sub_agent_id"].ToString());
+                        email_list[user_id] = row["ops_email_id"].ToString();
+                    }
+                    catch{}
+                }
+            }
+
+            string email_id = "";
+            try
+            {
+                email_id = email_list[333];
+                send_aggregate(mismatch_table, "OMS", 0, email_id);
+            }
+            catch
+            {}
+
+            List<DataTable> id_based_tables = mismatch_table.AsEnumerable()
+                                        .GroupBy(row => row.Field<int>("user_id"))
+                                        .Select(g => g.CopyToDataTable()).ToList();
+            foreach (DataTable table in id_based_tables)
+            {
+                string type = "None";
+                email_id = "";
+                int user_id = Convert.ToInt32(table.Rows[0]["user_id"].ToString());
+                try
+                { email_id = email_list[user_id]; }
+                catch
+                { continue; }
+                if (email_id == null || email_id.Length == 0)
+                { continue; }
+                try
+                { send_aggregate(table, type, user_id, email_id); }
+                catch
+                { continue; }
+            }
+        }
+
+        private static void send_aggregate(DataTable table, string type, int user_id, string email_ids)
+        {
+            int booking_id = 0;
+            email_ids = "amritesh.anand@travelyaari.com"; // Amritesh Anand email address
+            string cc_email_ids = System.Configuration.ConfigurationSettings.AppSettings["TO_EMAILS_OMS"];
+            string subject = "Mismatching Pickup Bookings";
+            Dictionary<string, object> contents = new Dictionary<string, object>();
+            string email_content;
+            if(type=="OMS")
+               email_content  = convert_to_html(table);
+            else
+               email_content = convert_to_html_selective(table);
+            email_content = "<h1>Mismatching Pickup Bookings</h1></br>" + "Total=" + table.Rows.Count.ToString() + "<br/>" + email_content;
+            contents["CONTENT"] = email_content;
+            Dictionary<string, object> attachments = new Dictionary<string, object>();
+            string etype = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_TABLE_TYPE"];
+            string key = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_TABLE_KEY"];
+            int email_status = send_email(booking_id, email_ids, cc_email_ids, subject, contents, attachments, etype);
+        }
+
+        private static void update_informed_status(int booking_id, int sms_status, int email_status)
+        {
+            clsDB db = new clsDB();
+            db.AddParameter("booking_id", booking_id);
+            db.AddParameter("sms_sent", sms_status);
+            db.AddParameter("email_sent", email_status);
+            db.ExecuteDML("RMS_UPDATE_INFORMED_STATUS", CommandType.StoredProcedure, 160);
+        }
+
+        public static string convert_to_html(DataTable dt)
+        {
             string html = @"<table style=""border:1px solid black"">";
             //add header row
             html += "<tr>";
-            for (int i = 0; i < dt.Columns.Count; i++)
+            for (int i = 0; i < dt.Columns.Count-1; i++)
                 html += @"<th style=""border:1px solid black"">" + dt.Columns[i].ColumnName.ToUpper() + "</th>";
             html += "</tr>";
             //add rows
             for (int i = 0; i < dt.Rows.Count; i++)
             {
                 html += "<tr>";
-                for (int j = 0; j < dt.Columns.Count; j++)
+                for (int j = 0; j < dt.Columns.Count-1; j++)
                     html += @"<td style=""border:1px solid black"">" + dt.Rows[i][j].ToString() + "</td>";
                 html += "</tr>";
             }
             html += "</table>";
             return html;
         }
-        
 
-        /// <summary>
-        /// send email api
-        /// </summary>
-        /// <param name="str_To"></param>
-        /// <param name="strSubject"></param>
-        /// <param name="strBody"></param>
-        public static void send_email(string str_To, string strSubject, string strBody)
+        public static string convert_to_html2(DataTable dt, string style1 , string style2)
         {
-            MailMessage message = null;
+            string html = "";
+            string style = "";
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                style = style1;
+                html += "<tr>";
+                for (int j = 0; j < dt.Columns.Count; j++)
+                {
+                    if (j == 1)
+                        style = style2;
+                    html += @"<td " + style + ">" + dt.Rows[i][j].ToString() + "</td>";
+                }
+                html += "</tr>";
+            }
+            return html;
+        }
+
+        public static string convert_to_html_selective(DataTable dt)
+        {
+            int[] valid = {0,1,2,3,4,10,11,12}; 
+            string html = @"<table style=""border:1px solid black"">";
+            //add header row
+            html += "<tr>";
+            foreach(int i in valid)
+                html += @"<th style=""border:1px solid black"">" + dt.Columns[i].ColumnName.ToUpper() + "</th>";
+            html += "</tr>";
+            //add rows
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                html += "<tr>";
+                foreach (int j in valid)
+                    html += @"<td style=""border:1px solid black"">" + dt.Rows[i][j].ToString() + "</td>";
+                html += "</tr>";
+            }
+            html += "</table>";
+            return html;
+        }
+
+        public static int send_email(int booking_id, string email_ids, string cc_email_ids, string subject, Dictionary<string, object> contents, Dictionary<string, object> attachments, string type)
+        {
+            bool blnIsCEmailGone = false;
             try
             {
-                string tyEmailId = System.Configuration.ConfigurationSettings.AppSettings["TYEmailId"];
-                string tyEmailPassword = System.Configuration.ConfigurationSettings.AppSettings["TYEmailPassword"];                
-                string smtpServer = System.Configuration.ConfigurationSettings.AppSettings["SMTPServer"];
-                string smtpPort = System.Configuration.ConfigurationSettings.AppSettings["SMTPPort"];
-                string cc_emails = System.Configuration.ConfigurationSettings.AppSettings["CC_EMAILS"];
-
-                SmtpClient smtp = new SmtpClient(smtpServer, Convert.ToInt32(smtpPort));
-                message = new MailMessage();
-
-                smtp.UseDefaultCredentials = false;
-                smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
-                smtp.Timeout = 60000;
-                smtp.EnableSsl = true;
-                
-                smtp.Credentials = new System.Net.NetworkCredential(tyEmailId, tyEmailPassword);
-                message.From = new MailAddress(tyEmailId);
-
-                string[] strArrEmails = str_To.Split(',');
-                foreach (string strToEmail in strArrEmails)
-                    message.To.Add(new MailAddress(strToEmail));
-
-                strArrEmails = cc_emails.Split(',');
-                foreach (string strCCEmail in strArrEmails)
-                    message.CC.Add(new MailAddress(strCCEmail));
-                message.BodyEncoding = System.Text.Encoding.UTF8;
-                message.Body = strBody;
-                message.IsBodyHtml = true;
-                message.Subject = strSubject;
-                
-                //if (strAttachment != "")
-                //    message.Attachments.Add(new Attachment(strAttachment));
-                smtp.Send(message);
-
+                string strURL = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_URL"];
+                try
+                {
+                    HttpWebRequest httpreq = (HttpWebRequest)WebRequest.Create(strURL);
+                    httpreq.Method = "POST";
+                    httpreq.ContentType = "application/json";
+                    Dictionary<string, object> post_dict = new Dictionary<string, object>();
+                    post_dict["type"] = type;
+                    post_dict["booking_id"] = booking_id;
+                    post_dict["email_ids"] = email_ids;
+                    post_dict["cc_email_ids"] = cc_email_ids;
+                    post_dict["subject"] = subject;
+                    post_dict["content_dict"] = (new JavaScriptSerializer()).Serialize(contents);
+                    post_dict["attachments_dict"] = (new JavaScriptSerializer()).Serialize(attachments);
+                    string post_json = (new JavaScriptSerializer()).Serialize(post_dict);
+                    Console.WriteLine(post_json);
+                    Stream dataStream = httpreq.GetRequestStream();
+                    byte[] post_data = Encoding.UTF8.GetBytes(post_json);
+                    dataStream.Write(post_data, 0, post_data.Length);
+                    dataStream.Close();
+                    HttpWebResponse httpresp = (HttpWebResponse)httpreq.GetResponse();
+                    byte[] buffer = new byte[httpresp.ContentLength + 1];
+                    httpresp.GetResponseStream().Read(buffer, 0, buffer.Length);
+                    string response = System.Text.Encoding.Default.GetString(buffer).Trim();
+                    httpresp.Close();
+                    string sPattern = "\"error\":\"\",\"status\":true";
+                    blnIsCEmailGone = System.Text.RegularExpressions.Regex.IsMatch(response, sPattern);
+                }
+                catch (System.Exception ex)
+                {
+                    blnIsCEmailGone = false;
+                    string x = ex.Message;
+                }
             }
             catch (Exception ex)
             {
-                throw ex;
             }
-            finally
-            {
-                if (message != null)
-                    message.Dispose();
-            }
+            return Convert.ToInt32(blnIsCEmailGone);
         }
-        
-        /// <summary>
-        /// Send sms : Deprecated
-        /// </summary>
-        /// <param name="bkgID"></param>
-        /// <param name="strPNR"></param>
-        /// <param name="strMobile"></param>
-        /// <param name="ds"></param>
-        /// <returns></returns>
-        public static int send_sms(int bkgID, string strPNR, string strMobile, DataSet ds)
+
+        public static int send_sms(int booking_id, string strPNR, string strMobile, Dictionary<string, string> content)
         {
             bool blnIsCSMSGone = false;
             try
             {
-
-                string strMsg1 = "", strMsg2 = "";
-                //new BusinessLayer().LoadSMSTemplate(ref strMsg1, ref strMsg2);
-                clsDB db = new clsDB();
-                db.AddParameter("TEMPLATE_ID", 1);
-                DataSet ds_result=db.ExecuteSelect("GDS_GET_SMSTemplate", CommandType.StoredProcedure, 160);
-                if (ds_result != null && ds_result.Tables.Count > 0 && ds_result.Tables[0].Rows.Count > 0)
+                string strURL = System.Configuration.ConfigurationSettings.AppSettings["SMS_URL"];
+                string stype = System.Configuration.ConfigurationSettings.AppSettings["SMS_TYPE"];
+                string key = System.Configuration.ConfigurationSettings.AppSettings["SMS_KEY"];
+                try
                 {
-                    strMsg1 = ds_result.Tables[0].Rows[0]["CONFIRM_SMS"].ToString();
-                    strMsg2 = ds_result.Tables[0].Rows[0]["DEPART_SMS"].ToString();
-                    StringBuilder strCSMS = new StringBuilder(strMsg1.ToUpper());
-                    StringBuilder strDSMS = new StringBuilder(strMsg2.ToUpper());
-
-                    if (strMsg1 != "" && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
-                    {
-                        strCSMS.Replace("TEMPID", "tempid");
-                        strDSMS.Replace("TEMPID", "tempid");
-
-                        strCSMS.Replace("[PNR]", Convert.ToString(ds.Tables[0].Rows[0]["provider_pnr_no"]).ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[PNR]", Convert.ToString(ds.Tables[0].Rows[0]["provider_pnr_no"]).ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[OP]", Convert.ToString(ds.Tables[0].Rows[0]["company_name"]).ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[OP]", Convert.ToString(ds.Tables[0].Rows[0]["company_name"]).ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[RT]", Convert.ToString(ds.Tables[0].Rows[0]["fromcity"]).ToUpper().Replace("&", "%26") + " - " + Convert.ToString(ds.Tables[0].Rows[0]["tocity"]).ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[RT]", Convert.ToString(ds.Tables[0].Rows[0]["fromcity"]).ToUpper().Replace("&", "%26") + " - " + Convert.ToString(ds.Tables[0].Rows[0]["tocity"]).ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[JD]", Convert.ToDateTime(ds.Tables[0].Rows[0]["journey_date"]).ToString("dd-MMM-yyyy").ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[JD]", Convert.ToDateTime(ds.Tables[0].Rows[0]["journey_date"]).ToString("dd-MMM-yyyy").ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[JT]", Convert.ToDateTime(ds.Tables[0].Rows[0]["pickup_time"]).ToString("hh:mm tt").ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[JT]", Convert.ToDateTime(ds.Tables[0].Rows[0]["pickup_time"]).ToString("hh:mm tt").ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[SB]", Convert.ToString(ds.Tables[0].Rows[0]["all_seats"]).ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[SB]", Convert.ToString(ds.Tables[0].Rows[0]["all_seats"]).ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[TS]", Convert.ToString(ds.Tables[0].Rows[0]["total_seats"]).ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[TS]", Convert.ToString(ds.Tables[0].Rows[0]["total_seats"]).ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[PN]", Convert.ToString(ds.Tables[0].Rows[0]["customer_name"]).ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[PN]", Convert.ToString(ds.Tables[0].Rows[0]["customer_name"]).ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[UB]", Convert.ToString(ds.Tables[0].Rows[0]["booked_by_agent"]).ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[UB]", Convert.ToString(ds.Tables[0].Rows[0]["booked_by_agent"]).ToUpper().Replace("&", "%26"));
-
-                        strCSMS.Replace("[PL]", Convert.ToString(ds.Tables[0].Rows[0]["pickup_name"]).ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[PL]", Convert.ToString(ds.Tables[0].Rows[0]["pickup_name"]).ToUpper().Replace("&", "%26"));
-
-                        string strPickup = Convert.ToString(ds.Tables[0].Rows[0]["pickup_name"]) + "," + Convert.ToString(ds.Tables[0].Rows[0]["pickup_landmark"]) + "," + Convert.ToString(ds.Tables[0].Rows[0]["pickup_address"]);
-                        strCSMS.Replace("[PL1]", strPickup.ToUpper().Replace("&", "%26"));
-                        strDSMS.Replace("[PL1]", strPickup.ToUpper().Replace("&", "%26"));
-                        strCSMS.Replace("[TF]", Convert.ToString(Convert.ToDecimal(ds.Tables[0].Rows[0]["booking_total_fare"]) + Convert.ToDecimal(ds.Tables[0].Rows[0]["sub_agent_service_charge"]) + Convert.ToDecimal(ds.Tables[0].Rows[0]["DELIVERY_CHARGE"]) - Convert.ToDecimal(ds.Tables[0].Rows[0]["discount"])));
-                        strDSMS.Replace("[TF]", Convert.ToString(Convert.ToDecimal(ds.Tables[0].Rows[0]["booking_total_fare"]) + Convert.ToDecimal(ds.Tables[0].Rows[0]["sub_agent_service_charge"]) + Convert.ToDecimal(ds.Tables[0].Rows[0]["DELIVERY_CHARGE"]) - Convert.ToDecimal(ds.Tables[0].Rows[0]["discount"])));
-
-
-                        try
-                        {
-                            if (ds.Tables[0].Rows[0]["company_id"].ToString() == "6933") //KSRTC
-                            {
-                                string strBusTypeName = Convert.ToString(ds.Tables[0].Rows[0]["bus_type_name"]);
-                                string[] strTripTypeName = strBusTypeName.Split('-');
-                                string strPlatform = Convert.ToString(ds.Tables[0].Rows[0]["pickup_address"]).Replace("Platform No:", "");
-
-                                string strSMS = "TripCode: " + Convert.ToString(strTripTypeName[0]).ToUpper() + ", Class: " + Convert.ToString(strTripTypeName[1]).ToUpper() + ", Pltfrm: " + (strPlatform == "" ? "--" : strPlatform) + " ";
-
-                                strCSMS.Insert(0, strSMS.ToUpper().Replace("&", "%26"));
-                            }
-                        }
-                        catch
-                        { }
-
-                        //strCSMS.Replace("&", "%26");
-                        //strDSMS.Replace("&", "%26");
-                        string strURL;//= @"http://www.ezeesms.com/sms/user/urlsms.php?username=travelyaari&amp;pass=travel&amp;dest_mobileno=" + strMobile + "&amp;senderid=TvlYaari&amp;message=" + strCSMS;
-                        string strURL_DEPART;
-                        strURL = Convert.ToString(System.Configuration.ConfigurationSettings.AppSettings["TYSMSURL"]);
-                        strURL_DEPART = strURL;
-                        strURL = strURL.Replace("#MOBILENO#", strMobile);
-                        strURL_DEPART = strURL_DEPART.Replace("#MOBILENO#", strMobile);
-                        strURL = strURL.Replace("#MESSAGE#", strCSMS.ToString());
-                        strURL_DEPART = strURL_DEPART.Replace("#MESSAGE#", strDSMS.ToString());
-                        string response="";
-                        try
-                        {
-                            HttpWebRequest httpreq = (HttpWebRequest)WebRequest.Create(strURL);
-                            HttpWebResponse httpresp = (HttpWebResponse)httpreq.GetResponse();
-                            byte[] buffer=new byte[httpresp.ContentLength+1];
-                            httpresp.GetResponseStream().Read(buffer, 0, buffer.Length);
-                            response = System.Text.Encoding.Default.GetString(buffer).Trim();
-                            httpresp.Close();
-                            string sPattern = "\\d+-\\d+_\\d+_\\d+";
-                            blnIsCSMSGone = System.Text.RegularExpressions.Regex.IsMatch(response, sPattern);                                
-                        }
-                        catch (System.Exception ex)
-                        {
-                            blnIsCSMSGone = false;
-                        }
-
-                        int smsid = 0;
-                        string strErrMsg = "";
-                        db = new clsDB();
-                        db.AddParameter("SMS_ID", smsid);
-                        db.AddParameter("BOOKING_ID", bkgID);
-                        db.AddParameter("URL", strURL,1000);
-                        db.AddParameter("URL_DEPART", strURL_DEPART,1000);
-                        db.AddParameter("SEND_TIME", Convert.ToDateTime(ds.Tables[0].Rows[0]["journey_date"]));
-                        db.AddParameter("ERR_MSG", strErrMsg, 200);
-                        db.AddParameter("IS_SENT", blnIsCSMSGone);
-                        db.ExecuteDML("GDS_SMSLog_Insert", CommandType.StoredProcedure, 160);
-                        //new SMSLogBO().SMSLog_Insert(ref smsid, bkgID, strMobile, strURL, strURL_DEPART, Convert.ToDateTime(ds.Tables[0].Rows[0]["journey_date"]), ref strErrMsg, blnIsCSMSGone);
-
-
-                        //HttpWebRequest httpreq = (HttpWebRequest)WebRequest.Create(strURL);
-                        //HttpWebResponse httpresp = (HttpWebResponse)httpreq.GetResponse();
-                    }
+                    HttpWebRequest httpreq = (HttpWebRequest)WebRequest.Create(strURL);
+                    httpreq.Method = "POST";
+                    httpreq.ContentType = "application/json"; 
+                    Dictionary<string, object> post_dict = new Dictionary<string, object>();
+                    post_dict["type"] = stype;
+                    post_dict["booking_id"] = booking_id;
+                    post_dict["mobile_no"] = strMobile;
+                    post_dict["content_dict"] = (new JavaScriptSerializer()).Serialize(content);
+                    post_dict["key"] = key;
+                    string post_json = (new JavaScriptSerializer()).Serialize(post_dict);
+                    Console.WriteLine(post_json);
+                    Stream dataStream = httpreq.GetRequestStream();
+                    byte[] post_data = Encoding.UTF8.GetBytes(post_json);
+                    dataStream.Write(post_data, 0, post_data.Length);
+                    dataStream.Close();
+                    HttpWebResponse httpresp = (HttpWebResponse)httpreq.GetResponse();
+                    byte[] buffer = new byte[httpresp.ContentLength + 1];
+                    httpresp.GetResponseStream().Read(buffer, 0, buffer.Length);
+                    string response = System.Text.Encoding.Default.GetString(buffer).Trim();
+                    httpresp.Close();
+                    string sPattern = "\"error\":\"\",\"status\":true";
+                    blnIsCSMSGone = System.Text.RegularExpressions.Regex.IsMatch(response, sPattern);
                 }
-                
+                catch (System.Exception ex)
+                {
+                    blnIsCSMSGone = false;
+                    string x = ex.Message;
+                }
             }
             catch (Exception ex)
             {
-
             }
             return Convert.ToInt32(blnIsCSMSGone);
         }
-        
-        public static void test()
-        {
-            clsDB db = new clsDB();
-            string CONFIRM_SMS = "";
-            string DEPART_SMS = "";
-            db.AddParameter("TEMPLATE_ID", 1);
-            db.AddOutParameter("CONFIRM_SMS", CONFIRM_SMS,500);
-            db.AddOutParameter("DEPART_SMS", DEPART_SMS,500);
-            db.ExecuteSelect("spSMSTemplate_Get", CommandType.StoredProcedure, 160);
-            CONFIRM_SMS = db.outParams["CONFIRM_SMS"].ToString();
-            DEPART_SMS = db.outParams["DEPART_SMS"].ToString();
-        }
 
-        /// <summary>
-        /// Send sms : New 
-        /// </summary>
-        /// <param name="mobile_no"></param>
-        /// <param name="ticket_sms"></param>
-        /// <returns></returns>
-        public static bool send_sms_eazy(string mobile_no,Ticket_SMS ticket_sms)
-        { 
-            bool sms_success=false;
-            string sms_view = "Dear Customer,you ticket $pnrNo is booked on $operatorName from $fromCity to $toCity on $pickup['date']. Boarding is from :$Boarding at $pickup['time']";
-            sms_view=sms_view.Replace("$ticketNo", ticket_sms.ticket_no);
-            sms_view = sms_view.Replace("$pnrNo", ticket_sms.pnr_no.ToUpper());
-            sms_view = sms_view.Replace("$fromCity", ticket_sms.from_city.ToUpper());
-            sms_view = sms_view.Replace("$toCity", ticket_sms.to_city);
-            sms_view = sms_view.Replace("$Boarding", ticket_sms.pickup);
-            sms_view = sms_view.Replace("$pickup['date']", ticket_sms.pickup_time.Date.ToShortDateString());
-            sms_view = sms_view.Replace("$pickup['time']", ticket_sms.pickup_time.TimeOfDay.ToString());
-            sms_view = sms_view.Replace("$bookedSeats", ticket_sms.seats);
-            sms_view = sms_view.Replace("$operatorName", ticket_sms.operator_name);
-            sms_view = sms_view.Replace("$operatorPhone", ticket_sms.operator_phone);
-            sms_view = sms_view.Replace("$customerName", ticket_sms.name);
-            string sms_url = ConfigurationSettings.AppSettings["EAZY_SMS_URL"].ToString();
-
-            sms_url=sms_url.Replace("@@customerMobile", mobile_no);
-            sms_url=sms_url.Replace("@@customerMessage",sms_view);
-            try
-            {
-                HttpWebRequest httpreq = (HttpWebRequest)WebRequest.Create(sms_url);
-                HttpWebResponse httpresp = (HttpWebResponse)httpreq.GetResponse();
-                byte[] buffer = new byte[httpresp.ContentLength + 1];
-                httpresp.GetResponseStream().Read(buffer, 0, buffer.Length);
-                string response = System.Text.Encoding.Default.GetString(buffer).Trim();
-                httpresp.Close();
-                if (response.Trim().ToUpper().Contains("SENT"))
-                {
-                    sms_success = true;
-                }
-                else {
-                    sms_success = false;
-                }
-                //string pattern = "\\d+-\\d+_\\d+_\\d+";
-                //sms_success= System.Text.RegularExpressions.Regex.IsMatch(response, pattern);
-            }
-            catch (System.Exception ex)
-            { 
-
-            }
-            return sms_success;
-        }
-        
-    }
-    /// <summary>
-    /// SMS Content object
-    /// </summary>
-    public class Ticket_SMS
-    {
-        public string ticket_no = "";
-        public string pnr_no = "";
-        public string from_city = "";
-        public string to_city = "";
-        public DateTime pickup_time;
-        public string seats;
-        public string operator_name = "";
-        public string operator_phone = "";
-        public string name = "";
-        public string pickup = "";
-        public Ticket_SMS(DataSet dsBooking)
+        private static string create_tinyURL(string url)
         {
-            this.pnr_no = dsBooking.Tables[0].Rows[0]["provider_pnr_no"].ToString();
-            this.ticket_no = dsBooking.Tables[0].Rows[0]["sub_agent_ticket_no"].ToString();
-            this.from_city = dsBooking.Tables[0].Rows[0]["from_city_name_temp"].ToString();
-            this.to_city = dsBooking.Tables[0].Rows[0]["to_city_name_temp"].ToString();
-            this.pickup_time = Convert.ToDateTime(dsBooking.Tables[0].Rows[0]["pickup_time"]);
-            this.pickup = dsBooking.Tables[0].Rows[0]["pickup_name"].ToString();
-            this.seats = dsBooking.Tables[0].Rows[0]["all_seats"].ToString();
-            this.operator_name =dsBooking.Tables[0].Rows[0]["company_name_temp"].ToString();
-            this.operator_phone = dsBooking.Tables[0].Rows[0]["pickup_phone"].ToString();            
-            this.name = dsBooking.Tables[1].Rows[0]["name"].ToString();
-        }
-        public static Ticket_SMS get_test_ticket()
-        {
-            clsDB db = new clsDB();            
-            db.AddParameter("PROVIDER_PNR_NO", "32317034-651931",200);
-            db.AddParameter("SUB_AGENT_TICKET_NO","3331415333557",200);
-            DataSet ds_booking = db.ExecuteSelect("WS_GET_BOOKING_INFO_3", CommandType.StoredProcedure, 160);
-            return new Ticket_SMS(ds_booking);
+            System.Uri address = new System.Uri("http://tinyurl.com/api-create.php?url=" + url);
+            System.Net.WebClient client = new System.Net.WebClient();
+            string tinyUrl = client.DownloadString(address);
+            return tinyUrl;
         }
     }
 }

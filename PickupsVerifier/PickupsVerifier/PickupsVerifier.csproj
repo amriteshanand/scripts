@@ -36,6 +36,9 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Web.Extensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
     <Reference Include="System.Web.Services" />
     <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -68,10 +71,10 @@
     <WebReferences Include="Web References\" />
   </ItemGroup>
   <ItemGroup>
-    <WebReferenceUrl Include="http://iis:8080/service.asmx%3fwsdl">
+    <WebReferenceUrl Include="http://api.mantistechnologies.com/service.asmx%3fwsdl">
       <UrlBehavior>Dynamic</UrlBehavior>
       <RelPath>Web References\gds_api\</RelPath>
-      <UpdateFromURL>http://iis:8080/service.asmx%3fwsdl</UpdateFromURL>
+      <UpdateFromURL>http://api.mantistechnologies.com/service.asmx%3fwsdl</UpdateFromURL>
       <ServiceLocationURL>
       </ServiceLocationURL>
       <CachedDynamicPropName>
@@ -105,6 +108,9 @@
       <DependentUpon>Reference.map</DependentUpon>
     </None>
     <None Include="Web References\gds_api\clsBookingDetail.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\gds_api\clsBookingDetailTY.datasource">
       <DependentUpon>Reference.map</DependentUpon>
     </None>
     <None Include="Web References\gds_api\clsBookingDetailV2.datasource">
