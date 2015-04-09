@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define DEBUG
+using System;
 using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
@@ -21,10 +22,13 @@ namespace PickupsVerifier
         static void Main(string[] args)
         {
             /* Fetch pickups for today's bookings.*/
-            fetch_rt_pickups_for_bookings();
+            #if !DEBUG
+            fetch_rt_pickups_for_bookings();            
+            #endif
 
             /*Get mismatched pickups from gds*/
             clsDB db = new clsDB();
+            
             DataSet ds = db.ExecuteSelect("RMS_GET_MISMATCHED_PICKUP_BOOKINGS", CommandType.StoredProcedure, 160);
             if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
             {
@@ -108,7 +112,9 @@ namespace PickupsVerifier
                     row["old_time"] = midnight_timecheck(Convert.ToDateTime(row["old_time"]), dt_jd);
 
                     //Update pickup time in gds and sms_sent in booked_pickups
+                    #if !DEBUG
                     update_booking(Convert.ToInt32(row["booking_id"].ToString()), Convert.ToDateTime(row["new_time"].ToString())); 
+                    #endif
 
                     int sms_status = 0;
                     int email_status = 0;
@@ -133,7 +139,9 @@ namespace PickupsVerifier
                     }
 
                     // Update sms and email status in BOOKED_PICKUP_UPDATES
-                    update_informed_status(Convert.ToInt32(row["booking_id"].ToString()), sms_status, email_status);
+                    #if !DEBUG
+                        update_informed_status(Convert.ToInt32(row["booking_id"].ToString()), sms_status, email_status);
+                    #endif
                 }
             }
             catch (System.Exception ex)
@@ -170,7 +178,9 @@ namespace PickupsVerifier
             string tno = row["ticket_no"].ToString();
             string pickup = row["pickup"].ToString();
             string mobile = Convert.ToString(row["mobile"]);
+            #if DEBUG
             mobile = "7676036717"; // Amritesh Anand Mobile Number
+            #endif
             Dictionary<string, string> content = new Dictionary<string, string>();
             content["pnr"] = pnr;
             string[] pickup_array = pickup.Split(new string[] { "</br>" }, StringSplitOptions.None);
@@ -189,7 +199,9 @@ namespace PickupsVerifier
             int email_status = 0;
             int booking_id = Convert.ToInt32(row["booking_id"].ToString());
             string to_email_id = row["customer_email"].ToString();
-            to_email_id = "amritesh.anand@travelyaari.com"; // Amritesh Anand Mobile Number
+            #if DEBUG
+                to_email_id = "amritesh.anand@travelyaari.com"; // Amritesh Anand Mobile Number
+            #endif
             string cc_email_id = System.Configuration.ConfigurationSettings.AppSettings["TO_EMAILS_OMS"];
             string subject = "";
             string pnr = row["pnr"].ToString();
@@ -273,7 +285,9 @@ namespace PickupsVerifier
         private static void send_aggregate(DataTable table, string type, int user_id, string email_ids)
         {
             int booking_id = 0;
-            email_ids = "amritesh.anand@travelyaari.com"; // Amritesh Anand email address
+            #if DEBUG
+                email_ids = "amritesh.anand@travelyaari.com"; // Amritesh Anand email address
+            #endif
             string cc_email_ids = System.Configuration.ConfigurationSettings.AppSettings["TO_EMAILS_OMS"];
             string subject = "Mismatching Pickup Bookings";
             Dictionary<string, object> contents = new Dictionary<string, object>();
