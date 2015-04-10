@@ -97,11 +97,27 @@ namespace PickupsVerifier
         private static void process(DataRow row)
         {
             int user_id = Convert.ToInt32(row["user_id"].ToString());
-            if(!(user_id==333 || user_id==4642))
+            string type = "";
+            int[] api_partners = { 3470,//Abhibus
+                                    456,//Goibibo
+                                    465,//MMT
+                                    630,//VIA
+                                    2489,//TicketGoose
+                                    463,//Hermes
+                                    4139,//TicketBlu
+                                    3641//TripGoTrip
+                                 };
+            foreach(int api_partner in api_partners)
             {
-                return;
+                if(user_id==api_partner)
+                    return;
             }
-            
+
+            if(user_id==333 || user_id == 4642)
+                type = "SMS_TY";
+            else
+                type = "SMS_GDS";
+
             try
             {
                 if (Convert.ToInt32(row["pickup_removed"]) == 0)
@@ -122,7 +138,7 @@ namespace PickupsVerifier
 
                     if (Convert.ToInt32(row["sms_sent"]) == 0)
                     {
-                        sms_status = process_sms(row);
+                        sms_status = process_sms(row, type);
                     }
                     else
                     {
@@ -170,7 +186,7 @@ namespace PickupsVerifier
             db.ExecuteDML("RMS_UPDATE_BOOKING_PICKUP_Amritesh", CommandType.StoredProcedure, 160);
         }
 
-        private static int process_sms(DataRow row)
+        private static int process_sms(DataRow row, string type)
         {
             int sms_status = 0;
             int booking_id = Convert.ToInt32(row["booking_id"].ToString());
@@ -190,7 +206,7 @@ namespace PickupsVerifier
             url = url.Replace("#PNR#",pnr);
             url = url.Replace("#TNO#", tno);
             content["url"] = create_tinyURL(url);
-            sms_status = send_sms(booking_id, pnr, mobile, content);
+            sms_status = send_sms(booking_id, pnr, mobile, content, type);
             return sms_status;
         }
 
@@ -418,13 +434,13 @@ namespace PickupsVerifier
             return Convert.ToInt32(blnIsCEmailGone);
         }
 
-        public static int send_sms(int booking_id, string strPNR, string strMobile, Dictionary<string, string> content)
+        public static int send_sms(int booking_id, string strPNR, string strMobile, Dictionary<string, string> content, string type)
         {
             bool blnIsCSMSGone = false;
             try
             {
                 string strURL = System.Configuration.ConfigurationSettings.AppSettings["SMS_URL"];
-                string stype = System.Configuration.ConfigurationSettings.AppSettings["SMS_TYPE"];
+                string stype = System.Configuration.ConfigurationSettings.AppSettings[type];
                 string key = System.Configuration.ConfigurationSettings.AppSettings["SMS_KEY"];
                 try
                 {
