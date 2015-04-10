@@ -441,7 +441,7 @@ namespace PickupsVerifier
             {
                 string strURL = System.Configuration.ConfigurationSettings.AppSettings["SMS_URL"];
                 string stype = System.Configuration.ConfigurationSettings.AppSettings[type];
-                string key = System.Configuration.ConfigurationSettings.AppSettings["SMS_KEY"];
+                string key = System.Configuration.ConfigurationSettings.AppSettings["KEY_"+type];
                 try
                 {
                     HttpWebRequest httpreq = (HttpWebRequest)WebRequest.Create(strURL);
