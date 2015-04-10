@@ -370,7 +370,7 @@ namespace PickupsVerifier
 
         public static string convert_to_html_selective(DataTable dt)
         {
-            int[] valid = {0,1,2,3,4,10,11,12}; 
+            int[] valid = {0,1,2,9,15,16,17,3,4,10,11,12}; 
             string html = @"<table style=""border:1px solid black"">";
             //add header row
             html += "<tr>";
