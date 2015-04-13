@@ -163,7 +163,8 @@ namespace PickupsVerifier
             }
             catch (System.Exception ex)
             {
-                status = -1;               
+                status = -1;
+                string errorMessage = ex.Message;
             }
             finally
             {

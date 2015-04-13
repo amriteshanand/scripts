@@ -1,4 +1,4 @@
-﻿#define DEBUG
+﻿//#define DEBUG
 using System;
 using System.Collections.Generic;
 using System.Collections;
@@ -18,7 +18,20 @@ namespace PickupsVerifier
 {
     class Program
     {
-        
+        static int total_mismatch = 0;
+        static int total_sms_sent = 0;
+        static int total_email_sent = 0;
+        static int total_ignored = 0;
+        static int[] api_partners = { 3470,//Abhibus
+                                    456,//Goibibo
+                                    465,//MMT
+                                    630,//VIA
+                                    2489,//TicketGoose
+                                    463,//Hermes
+                                    4139,//TicketBlu
+                                    3641//TripGoTrip
+                                 };
+                
         static void Main(string[] args)
         {
             /* Fetch pickups for today's bookings.*/
@@ -30,17 +43,25 @@ namespace PickupsVerifier
             clsDB db = new clsDB();
             
             DataSet ds = db.ExecuteSelect("RMS_GET_MISMATCHED_PICKUP_BOOKINGS", CommandType.StoredProcedure, 160);
+            
             if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
             {
-                foreach (DataRow row in ds.Tables[0].Rows)
+                total_mismatch = ds.Tables[0].Rows.Count;
+                Console.WriteLine("Processing " + total_mismatch.ToString() + " mismatch");
+                for (int i = 0; i < total_mismatch; i++)
                 {
+                    DataRow row = ds.Tables[0].Rows[i];
+                    Console.WriteLine("Working on " +i.ToString()+"/"+total_mismatch.ToString());
                     process(row);
                 }
                 if (ds.Tables[0].Rows.Count > 0)
                 {
+                    Console.WriteLine("Processing aggregate");
                     process_aggregation(ds.Tables[0]);
                 }
             }
+            Console.WriteLine("Mismatch-" + total_mismatch.ToString() + " SMS-" + total_sms_sent.ToString()
+                + " Total Email-" + total_email_sent.ToString() + " Ignored-" + total_ignored.ToString());
         }
 
         private static void fetch_rt_pickups_for_bookings()
@@ -98,19 +119,14 @@ namespace PickupsVerifier
         {
             int user_id = Convert.ToInt32(row["user_id"].ToString());
             string type = "";
-            int[] api_partners = { 3470,//Abhibus
-                                    456,//Goibibo
-                                    465,//MMT
-                                    630,//VIA
-                                    2489,//TicketGoose
-                                    463,//Hermes
-                                    4139,//TicketBlu
-                                    3641//TripGoTrip
-                                 };
             foreach(int api_partner in api_partners)
             {
-                if(user_id==api_partner)
+                if (user_id == api_partner)
+                {
+                    Console.WriteLine("Ignored");
+                    total_ignored += 1;
                     return;
+                }
             }
 
             if(user_id==333 || user_id == 4642)
@@ -139,6 +155,8 @@ namespace PickupsVerifier
                     if (Convert.ToInt32(row["sms_sent"]) == 0)
                     {
                         sms_status = process_sms(row, type);
+                        total_sms_sent += sms_status;
+                        Console.WriteLine("SMS sent");
                     }
                     else
                     {
@@ -148,6 +166,8 @@ namespace PickupsVerifier
                     if (Convert.ToInt32(row["email_sent"]) == 0)
                     {
                         email_status = process_email(row);
+                        total_email_sent += email_status;
+                        Console.WriteLine("Email sent");
                     }
                     else
                     {
@@ -218,7 +238,7 @@ namespace PickupsVerifier
             #if DEBUG
                 to_email_id = "amritesh.anand@travelyaari.com"; // Amritesh Anand Mobile Number
             #endif
-            string cc_email_id = System.Configuration.ConfigurationSettings.AppSettings["TO_EMAILS_OMS"];
+            string cc_email_id = "";
             string subject = "";
             string pnr = row["pnr"].ToString();
             string tno = row["ticket_no"].ToString();
@@ -273,6 +293,7 @@ namespace PickupsVerifier
             {
                 email_id = email_list[333];
                 send_aggregate(mismatch_table, "OMS", 0, email_id);
+                update_team_informed(mismatch_table);
             }
             catch
             {}
@@ -298,6 +319,21 @@ namespace PickupsVerifier
             }
         }
 
+        private static void update_team_informed(DataTable mismatch_table)
+        {
+            clsDB db = new clsDB();
+            DataTable dtBookings = new DataTable();
+            dtBookings.Columns.Add("id", typeof(int));
+            foreach (DataRow dr in mismatch_table.Rows)
+            {
+                DataRow drBookings = dtBookings.NewRow();
+                drBookings["id"] = Convert.ToInt32(dr["booking_id"]);
+                dtBookings.Rows.Add(drBookings);
+            }
+            db.AddParameter("booking_ids", dtBookings);
+            db.ExecuteDML("RMS_UPDATE_TEAM_INFORMED_STATUS", CommandType.StoredProcedure, 160);
+        }
+        
         private static void send_aggregate(DataTable table, string type, int user_id, string email_ids)
         {
             int booking_id = 0;
