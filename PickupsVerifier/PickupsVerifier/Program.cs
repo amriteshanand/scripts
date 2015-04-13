@@ -161,6 +161,7 @@ namespace PickupsVerifier
                     else
                     {
                         sms_status = 1;
+                        Console.WriteLine("SMS was sent");
                     }
 
                     if (Convert.ToInt32(row["email_sent"]) == 0)
@@ -172,6 +173,7 @@ namespace PickupsVerifier
                     else
                     {
                         email_status = 1;
+                        Console.WriteLine("Email was sent");
                     }
 
                     // Update sms and email status in BOOKED_PICKUP_UPDATES
@@ -182,6 +184,7 @@ namespace PickupsVerifier
             }
             catch (System.Exception ex)
             {
+                Console.WriteLine("Something failed");
             }
         }
 
