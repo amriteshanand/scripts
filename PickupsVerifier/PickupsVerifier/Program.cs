@@ -31,7 +31,7 @@ namespace PickupsVerifier
                                     4139,//TicketBlu
                                     3641//TripGoTrip
                                  };
-                
+
         static void Main(string[] args)
         {
             /* Fetch pickups for today's bookings.*/
@@ -445,7 +445,7 @@ namespace PickupsVerifier
                     post_dict["content_dict"] = (new JavaScriptSerializer()).Serialize(contents);
                     post_dict["attachments_dict"] = (new JavaScriptSerializer()).Serialize(attachments);
                     string post_json = (new JavaScriptSerializer()).Serialize(post_dict);
-                    Console.WriteLine(post_json);
+                    //Console.WriteLine(post_json);
                     Stream dataStream = httpreq.GetRequestStream();
                     byte[] post_data = Encoding.UTF8.GetBytes(post_json);
                     dataStream.Write(post_data, 0, post_data.Length);
@@ -490,7 +490,7 @@ namespace PickupsVerifier
                     post_dict["content_dict"] = (new JavaScriptSerializer()).Serialize(content);
                     post_dict["key"] = key;
                     string post_json = (new JavaScriptSerializer()).Serialize(post_dict);
-                    Console.WriteLine(post_json);
+                    //Console.WriteLine(post_json);
                     Stream dataStream = httpreq.GetRequestStream();
                     byte[] post_data = Encoding.UTF8.GetBytes(post_json);
                     dataStream.Write(post_data, 0, post_data.Length);
