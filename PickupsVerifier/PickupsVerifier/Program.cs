@@ -295,7 +295,12 @@ namespace PickupsVerifier
             try
             {
                 email_id = email_list[333];
-                send_aggregate(mismatch_table, "OMS", 0, email_id);
+                DataSet ds2 = db.ExecuteSelect("RMS_GET_MISMATCHED_PICKUP_BOOKINGS", CommandType.StoredProcedure, 160);
+                if (ds2 != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+                {
+                    DataTable mismatch_table2 = ds2.Tables[0];
+                    send_aggregate(mismatch_table2, "OMS", 0, email_id);
+                }
                 update_team_informed(mismatch_table);
             }
             catch
