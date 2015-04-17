@@ -1,0 +1,10 @@
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\obj\Release\ResolveAssemblyReference.cache
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\obj\Release\PickupReminder.Properties.Resources.resources
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\obj\Release\PickupReminder.csproj.GenerateResource.Cache
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\bin\Release\PickupReminder.exe.config
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\bin\Release\PickupReminder.exe
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\bin\Release\PickupReminder.XmlSerializers.dll
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\bin\Release\PickupReminder.pdb
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\obj\Release\PickupReminder.exe
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\obj\Release\PickupReminder.pdb
+C:\Users\Amritesh\Desktop\code_base\TY_Scripts\scripts\PickupsVerifier\PickupReminder\obj\Release\PickupReminder.XmlSerializers.dll

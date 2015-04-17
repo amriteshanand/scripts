@@ -119,14 +119,11 @@ namespace PickupsVerifier
         {
             int user_id = Convert.ToInt32(row["user_id"].ToString());
             string type = "";
-            foreach(int api_partner in api_partners)
+            if (api_partners.Contains(user_id))
             {
-                if (user_id == api_partner)
-                {
-                    Console.WriteLine("Ignored");
-                    total_ignored += 1;
-                    return;
-                }
+                Console.WriteLine("Ignored");
+                total_ignored += 1;
+                return;
             }
 
             if(user_id==333 || user_id == 4642)
@@ -435,7 +432,7 @@ namespace PickupsVerifier
 
         public static int send_email(int booking_id, string email_ids, string cc_email_ids, string subject, Dictionary<string, object> contents, Dictionary<string, object> attachments, string type)
         {
-            bool blnIsCEmailGone = false;
+            bool blnIsEmailGone = false;
             try
             {
                 string strURL = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_URL"];
@@ -464,18 +461,18 @@ namespace PickupsVerifier
                     string response = System.Text.Encoding.Default.GetString(buffer).Trim();
                     httpresp.Close();
                     string sPattern = "\"error\":\"\",\"status\":true";
-                    blnIsCEmailGone = System.Text.RegularExpressions.Regex.IsMatch(response, sPattern);
+                    blnIsEmailGone = System.Text.RegularExpressions.Regex.IsMatch(response, sPattern);
                 }
                 catch (System.Exception ex)
                 {
-                    blnIsCEmailGone = false;
+                    blnIsEmailGone = false;
                     string x = ex.Message;
                 }
             }
             catch (Exception ex)
             {
             }
-            return Convert.ToInt32(blnIsCEmailGone);
+            return Convert.ToInt32(blnIsEmailGone);
         }
 
         public static int send_sms(int booking_id, string strPNR, string strMobile, Dictionary<string, string> content, string type)
