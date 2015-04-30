@@ -1,4 +1,4 @@
-﻿//#define DEBUG
+﻿#define DEBUG
 using System;
 using System.Collections.Generic;
 using System.Collections;
@@ -22,15 +22,8 @@ namespace PickupsVerifier
         static int total_sms_sent = 0;
         static int total_email_sent = 0;
         static int total_ignored = 0;
-        static int[] api_partners = { 3470,//Abhibus
-                                    456,//Goibibo
-                                    465,//MMT
-                                    630,//VIA
-                                    2489,//TicketGoose
-                                    463,//Hermes
-                                    4139,//TicketBlu
-                                    3641//TripGoTrip
-                                 };
+        static string strapi_partners = System.Configuration.ConfigurationSettings.AppSettings["API_PARTNERS"];
+        static int[] api_partners = Array.ConvertAll(strapi_partners.Split(','), s => int.Parse(s));
 
         static void Main(string[] args)
         {
