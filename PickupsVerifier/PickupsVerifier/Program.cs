@@ -180,9 +180,13 @@ namespace PickupsVerifier
 
         private static DateTime midnight_timecheck(DateTime time, DateTime dt_jd)
         {
-            if ((dt_jd.TimeOfDay.Hours - time.Hour) > 18 || (time.Hour - dt_jd.TimeOfDay.Hours) > 18)
+            if ((dt_jd.TimeOfDay.Hours - time.Hour) > 18)
             {
                 time = dt_jd.Date.AddDays(1).Add(time.TimeOfDay);
+            }
+            else if ((time.Hour - dt_jd.TimeOfDay.Hours) > 18)
+            {
+                time = dt_jd.Date.AddDays(-1).Add(time.TimeOfDay);
             }
             else
             {
