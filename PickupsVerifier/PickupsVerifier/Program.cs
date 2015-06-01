@@ -116,6 +116,7 @@ namespace PickupsVerifier
             {
                 Console.WriteLine("Ignored");
                 total_ignored += 1;
+                update_informed_status(Convert.ToInt32(row["booking_id"].ToString()), -1, -1);
                 return;
             }
 
@@ -236,6 +237,7 @@ namespace PickupsVerifier
                 to_email_id = "amritesh.anand@travelyaari.com"; // Amritesh Anand Mobile Number
             #endif
             string cc_email_id = "";
+            string bcc_email_id = "";
             string subject = "";
             string pnr = row["pnr"].ToString();
             string tno = row["ticket_no"].ToString();
@@ -262,7 +264,7 @@ namespace PickupsVerifier
             }
             string etype = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_PMISMATCH_TYPE"];
             string key = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_PMISMATCH_KEY"];
-            email_status = send_email(booking_id, to_email_id, cc_email_id, subject, contents, attachments, etype);
+            email_status = send_email(booking_id, to_email_id, cc_email_id, bcc_email_id, subject, contents, attachments, etype);
             return email_status;
         }
 
@@ -342,7 +344,8 @@ namespace PickupsVerifier
             #if DEBUG
                 email_ids = "amritesh.anand@travelyaari.com"; // Amritesh Anand email address
             #endif
-            string cc_email_ids = System.Configuration.ConfigurationSettings.AppSettings["TO_EMAILS_OMS"];
+            string cc_email_ids = "";
+            string bcc_email_ids = System.Configuration.ConfigurationSettings.AppSettings["BCC_EMAILS_OMS"];
             string subject = "Mismatching Pickup Bookings";
             Dictionary<string, object> contents = new Dictionary<string, object>();
             string email_content;
@@ -355,7 +358,7 @@ namespace PickupsVerifier
             Dictionary<string, object> attachments = new Dictionary<string, object>();
             string etype = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_TABLE_TYPE"];
             string key = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_TABLE_KEY"];
-            int email_status = send_email(booking_id, email_ids, cc_email_ids, subject, contents, attachments, etype);
+            int email_status = send_email(booking_id, email_ids, cc_email_ids, bcc_email_ids, subject, contents, attachments, etype);
         }
 
         private static void update_informed_status(int booking_id, int sms_status, int email_status)
@@ -427,7 +430,7 @@ namespace PickupsVerifier
             return html;
         }
 
-        public static int send_email(int booking_id, string email_ids, string cc_email_ids, string subject, Dictionary<string, object> contents, Dictionary<string, object> attachments, string type)
+        public static int send_email(int booking_id, string email_ids, string cc_email_ids, string bcc_email_ids, string subject, Dictionary<string, object> contents, Dictionary<string, object> attachments, string type)
         {
             bool blnIsEmailGone = false;
             try
@@ -443,6 +446,7 @@ namespace PickupsVerifier
                     post_dict["booking_id"] = booking_id;
                     post_dict["email_ids"] = email_ids;
                     post_dict["cc_email_ids"] = cc_email_ids;
+                    post_dict["bcc_email_ids"] = bcc_email_ids;
                     post_dict["subject"] = subject;
                     post_dict["content_dict"] = (new JavaScriptSerializer()).Serialize(contents);
                     post_dict["attachments_dict"] = (new JavaScriptSerializer()).Serialize(attachments);
