@@ -149,25 +149,21 @@ namespace PickupReminder
             db.AddParameter("sub_agent_ticket_no", tno, 20);
             DataSet ds = db.ExecuteSelect("WS_GET_TICKET_INFO_TY", CommandType.StoredProcedure, 160);
             Dictionary<string, object> contents = new Dictionary<string, object>();
-            Dictionary<string, object> attachments = new Dictionary<string, object>();
             if (ds != null && ds.Tables.Count > 2 && ds.Tables[0].Rows.Count > 0)
             {
                 foreach (DataRow details in ds.Tables[0].Rows)
                 {
                     contents = details.Table.Columns.Cast<DataColumn>().ToDictionary(col => col.ColumnName, col => details.Field<object>(col.ColumnName));
-                    attachments = details.Table.Columns.Cast<DataColumn>().ToDictionary(col => col.ColumnName, col => details.Field<object>(col.ColumnName));
                 }
-                string pickup_place_style = @"class=""points-right"" style=""padding: 8px 0;vertical-align: middle;border-top: 1px dashed #d3bcb9;""";
-                string pickup_time_style = @"class=""points-left"" style=""font-weight: bold;vertical-align: middle;width: 80px;padding: 8px 0;border-top: 1px dashed #d3bcb9;""";
-                string passenger_style = @"class=""passenger-body"" style=""font-size: 13px;padding: 5px 0;border-bottom: 1px solid #E0DACF;""";
-                contents["PASSENGERS"] = convert_to_html2(ds.Tables[1], passenger_style, passenger_style);
-                contents["PICKUPS"] = convert_to_html2(ds.Tables[2], pickup_time_style, pickup_place_style);
-                attachments["PASSENGERS"] = convert_to_html2(ds.Tables[1], passenger_style, passenger_style);
-                attachments["PICKUPS"] = convert_to_html2(ds.Tables[2], pickup_time_style, pickup_place_style);
+                contents["PASSENGERS"] = process_passengers(ds.Tables[1]);
+                contents["CCHARGES"] = process_ccharges(ds.Tables[3]);
+                contents["DDATE"] = Convert.ToDateTime(contents["DDATE"]).ToString("ddd, dd MMM yyyy");
+                contents["ADATE"] = Convert.ToDateTime(contents["ADATE"]).ToString("ddd, dd MMM yyyy");
+                contents["BDATE"] = Convert.ToDateTime(contents["BDATE"]).ToString("ddd, dd MMM yyyy");
             }
             string etype = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_PREMINDER_TYPE"];
             string key = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_PREMINDER_KEY"];
-            email_status = send_email(booking_id, to_email_id, cc_email_id, bcc_email_id, subject, contents, attachments, etype);
+            email_status = send_email(booking_id, to_email_id, cc_email_id, bcc_email_id, subject, contents, contents, etype);
             return email_status;
         }
 
@@ -180,22 +176,61 @@ namespace PickupReminder
             db.ExecuteDML("RMS_UPDATE_PICKUP_REMINDER_STATUS", CommandType.StoredProcedure, 160);
         }
 
-        public static string convert_to_html2(DataTable dt, string style1, string style2)
+        public static string process_passengers(DataTable dt)
         {
             string html = "";
-            string style = "";
             for (int i = 0; i < dt.Rows.Count; i++)
             {
-                style = style1;
                 html += "<tr>";
                 for (int j = 0; j < dt.Columns.Count; j++)
                 {
-                    if (j == 1)
-                        style = style2;
-                    html += @"<td " + style + ">" + dt.Rows[i][j].ToString() + "</td>";
+                    html += @"<td style=""padding: 12px 3px;text-align: left;color: #000;border-top: 1px solid #dcdcdc;"">" + dt.Rows[i][j].ToString() + "</td>";
                 }
                 html += "</tr>";
             }
+            return html;
+        }
+
+        public static string process_ccharges(DataTable dt)
+        {
+            string html = @"<ul style=""margin: 0;padding: 25px 0 25px 25px;"">";
+            double dblChargeFixed = 0.0;
+            double dblChargePercentage = 0.0;
+            string strMinutesBeforeDeparture = "";
+            string strLastBandEndPoint = "";
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                dblChargeFixed = Convert.ToDouble(dt.Rows[i][0].ToString());
+                dblChargePercentage = Convert.ToDouble(dt.Rows[i][1].ToString());
+                strMinutesBeforeDeparture = dt.Rows[i][2].ToString();
+                
+                if (i == 0)
+                {
+                    html += @"<li style=""margin: 5px 0 0 0;padding: 0;font-size: 11px;"">" 
+                         + "Between <b>0 hours</b> And <b>" + strMinutesBeforeDeparture 
+                         + "</b> Before Journey Time : " 
+                         + (dblChargeFixed == 0.0 ? dblChargePercentage.ToString() + "%" : dblChargeFixed.ToString()+"/seat") 
+                         + "</b></li>";
+                }
+                else if (i == dt.Rows.Count - 1)
+                {
+                    html += @"<li style=""margin: 5px 0 0 0;padding: 0;font-size: 11px;"">"
+                         + "More than <b>" + strLastBandEndPoint
+                         + "</b> Before Journey Time : " 
+                         + (dblChargeFixed == 0.0 ? dblChargePercentage.ToString() + "%" : dblChargeFixed.ToString()+"/seat") 
+                         + "</b></li>";
+                }
+                else
+                {
+                    html += @"<li style=""margin: 5px 0 0 0;padding: 0;font-size: 11px;"">"
+                         + "Between <b>" + strLastBandEndPoint + "</b> And <b>" + strMinutesBeforeDeparture
+                         + "</b> Before Journey Time : "
+                         + (dblChargeFixed == 0.0 ? dblChargePercentage.ToString() + "%" : dblChargeFixed.ToString() + "/seat")
+                         + "</b></li>";
+                }
+                strLastBandEndPoint = strMinutesBeforeDeparture;
+            }
+            html += "</ul>";
             return html;
         }
 

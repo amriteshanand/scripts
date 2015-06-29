@@ -246,26 +246,50 @@ namespace PickupsVerifier
             db.AddParameter("sub_agent_ticket_no", tno, 20);
             DataSet ds = db.ExecuteSelect("WS_GET_TICKET_INFO_TY", CommandType.StoredProcedure, 160);
             Dictionary<string, object> contents = new Dictionary<string, object>();
-            Dictionary<string, object> attachments = new Dictionary<string, object>();
             if (ds != null && ds.Tables.Count > 2 && ds.Tables[0].Rows.Count > 0)
             {
                 foreach (DataRow details in ds.Tables[0].Rows)
                 {
                     contents = details.Table.Columns.Cast<DataColumn>().ToDictionary(col => col.ColumnName, col => details.Field<object>(col.ColumnName));
-                    attachments = details.Table.Columns.Cast<DataColumn>().ToDictionary(col => col.ColumnName, col => details.Field<object>(col.ColumnName));
                 }
-                string pickup_place_style = @"class=""points-right"" style=""padding: 8px 0;vertical-align: middle;border-top: 1px dashed #d3bcb9;""";
-                string pickup_time_style = @"class=""points-left"" style=""font-weight: bold;vertical-align: middle;width: 80px;padding: 8px 0;border-top: 1px dashed #d3bcb9;""";
-                string passenger_style = @"class=""passenger-body"" style=""font-size: 13px;padding: 5px 0;border-bottom: 1px solid #E0DACF;""";
-                contents["PASSENGERS"] = convert_to_html2(ds.Tables[1], passenger_style, passenger_style);
-                contents["PICKUPS"] = convert_to_html2(ds.Tables[2], pickup_time_style,pickup_place_style);
-                attachments["PASSENGERS"] = convert_to_html2(ds.Tables[1], passenger_style, passenger_style);
-                attachments["PICKUPS"] = convert_to_html2(ds.Tables[2], pickup_time_style, pickup_place_style);
+                contents["PASSENGERS"] = process_passengers(ds.Tables[1]);
+                contents["PICKUPS"] = process_pickups(ds.Tables[2]);
+                contents["DDATE"] = Convert.ToDateTime(contents["DDATE"]).ToString("ddd, dd MMM yyyy");
+                contents["ADATE"] = Convert.ToDateTime(contents["ADATE"]).ToString("ddd, dd MMM yyyy");
+                contents["BDATE"] = Convert.ToDateTime(contents["BDATE"]).ToString("ddd, dd MMM yyyy");
             }
             string etype = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_PMISMATCH_TYPE"];
             string key = System.Configuration.ConfigurationSettings.AppSettings["EMAIL_PMISMATCH_KEY"];
-            email_status = send_email(booking_id, to_email_id, cc_email_id, bcc_email_id, subject, contents, attachments, etype);
+            email_status = send_email(booking_id, to_email_id, cc_email_id, bcc_email_id, subject, contents, contents, etype);
             return email_status;
+        }
+
+        public static string process_passengers(DataTable dt)
+        {
+            string html = "";
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                html += "<tr>";
+                for (int j = 0; j < dt.Columns.Count; j++)
+                {
+                    html += @"<td style=""padding: 12px 3px;text-align: left;color: #000;border-top: 1px solid #dcdcdc;"">" + dt.Rows[i][j].ToString() + "</td>";
+                }
+                html += "</tr>";
+            }
+            return html;
+        }
+
+        public static string process_pickups(DataTable dt)
+        {
+            string html = "";
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                html += "<tr>";
+                html += @"<td class=""points-left"" style=""font-weight: bold;vertical-align: middle;width: 80px;padding: 8px 0 8px 5px;border-top: 1px dashed #d3bcb9;"">" + dt.Rows[i][0].ToString() + " :</td>";
+                html += @"<td class=""points-right"" style=""padding: 8px 0;vertical-align: middle;border-top: 1px dashed #d3bcb9;"">" + dt.Rows[i][1].ToString() + "</td>";
+                html += "</tr>";
+            }
+            return html;
         }
 
         private static void process_aggregation(DataTable mismatch_table)
@@ -387,25 +411,6 @@ namespace PickupsVerifier
                 html += "</tr>";
             }
             html += "</table>";
-            return html;
-        }
-
-        public static string convert_to_html2(DataTable dt, string style1 , string style2)
-        {
-            string html = "";
-            string style = "";
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                style = style1;
-                html += "<tr>";
-                for (int j = 0; j < dt.Columns.Count; j++)
-                {
-                    if (j == 1)
-                        style = style2;
-                    html += @"<td " + style + ">" + dt.Rows[i][j].ToString() + "</td>";
-                }
-                html += "</tr>";
-            }
             return html;
         }
 
